@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AgriNode | Smart Agriculture</title>
+<style>
+:root{font-family:Inter,system-ui,Segoe UI,Arial,sans-serif;color:#17231b;background:#f2f6f1;--green:#216e45;--line:#dbe5dc;--muted:#66756a}
+*{box-sizing:border-box}body{margin:0}header{background:#174c32;color:#fff;padding:22px max(18px,calc((100% - 1120px)/2));display:flex;align-items:center;justify-content:space-between;gap:16px}header h1{margin:0;font-size:1.35rem}header p{margin:4px 0 0;color:#d6e9dc;font-size:.9rem}.wrap{max-width:1120px;margin:24px auto;padding:0 16px}.panel{background:#fff;border:1px solid var(--line);border-radius:16px;padding:20px;margin-bottom:18px;box-shadow:0 3px 14px #163b1d08}.hidden{display:none!important}.auth{max-width:420px;margin:50px auto}.auth h2{margin-top:0}.field{display:block;width:100%;padding:12px;border:1px solid #cbd8ce;border-radius:9px;margin:7px 0 14px;font:inherit}button{border:0;border-radius:9px;background:var(--green);color:white;padding:11px 15px;font:inherit;font-weight:650;cursor:pointer}button.secondary{background:#e8f2eb;color:#174c32}button.danger{background:#a63b31}.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.muted{color:var(--muted)}.status{font-size:.88rem;margin-top:12px;color:var(--muted)}.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.metric{background:#fbfdfb;border:1px solid var(--line);border-radius:13px;padding:16px;min-height:112px}.metric .label{font-size:.84rem;color:var(--muted)}.metric .value{font-size:1.6rem;font-weight:750;margin-top:10px;overflow-wrap:anywhere}.metric .unit{font-size:.9rem;font-weight:500;color:var(--muted)}h2{font-size:1.1rem;margin:0 0 14px}h3{font-size:1rem}.pill{display:inline-block;border-radius:999px;padding:5px 10px;background:#e8f2eb;color:#174c32;font-size:.8rem;font-weight:700}.pill.off{background:#f5e7e4;color:#8a2c22}.tablewrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:660px}th,td{text-align:left;padding:11px;border-bottom:1px solid var(--line);font-size:.9rem}th{color:var(--muted);font-weight:650}.notice{background:#fff8df;border:1px solid #f0df9d;padding:12px;border-radius:10px;font-size:.9rem}.small{font-size:.82rem}.spacer{flex:1}@media(max-width:800px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}header{align-items:flex-start;flex-direction:column}}@media(max-width:440px){.grid{grid-template-columns:1fr 1fr}.metric .value{font-size:1.25rem}.panel{padding:14px}}
+</style>
+</head>
+<body>
+<header>
+  <div><h1>🌱 AgriNode Smart Agriculture</h1><p>Soil sensing · Soil-colour tests · Water control</p></div>
+  <div id="accountBar" class="row hidden"><span id="userEmail" class="small"></span><button id="signOutBtn" class="secondary">Sign out</button></div>
+</header>
+
+<main class="wrap">
+  <section id="authPanel" class="panel auth">
+    <h2>Sign in</h2>
+    <p class="muted">Use the email and password registered in Firebase Authentication.</p>
+    <form id="loginForm">
+      <label for="email">Email address</label>
+      <input class="field" id="email" type="email" autocomplete="username" required placeholder="you@example.com">
+      <label for="password">Password</label>
+      <input class="field" id="password" type="password" autocomplete="current-password" required placeholder="Firebase account password">
+      <button type="submit" style="width:100%">Sign in</button>
+    </form>
+    <p id="authMessage" class="status" role="status"></p>
+    <p class="small muted">Create accounts in Firebase Console → Authentication → Sign-in method → Email/Password, then Users → Add user.</p>
+  </section>
+
+  <section id="dashboard" class="hidden">
+    <div class="panel row">
+      <div><strong>Device status</strong><div id="deviceStatus" class="status">Waiting for sensor data…</div></div>
+      <div class="spacer"></div>
+      <span id="modeBadge" class="pill">AUTO</span>
+      <span id="pumpBadge" class="pill off">PUMP OFF</span>
+    </div>
+
+    <div class="grid">
+      <div class="metric"><div class="label">Soil temperature</div><div id="temperature" class="value">— <span class="unit">°C</span></div></div>
+      <div class="metric"><div class="label">Moisture module D0</div><div id="moisture" class="value">—</div><div class="small muted">Digital threshold only, not a percentage</div></div>
+      <div class="metric"><div class="label">Latest soil type</div><div id="soilType" class="value" style="font-size:1.15rem">Not tested</div></div>
+      <div class="metric"><div class="label">Auxiliary relay</div><div id="auxStatus" class="value">OFF</div></div>
+    </div>
+
+    <section class="panel" style="margin-top:18px">
+      <h2>Colour sensor readings</h2>
+      <div class="grid">
+        <div class="metric"><div class="label">Red raw</div><div id="red" class="value">—</div></div>
+        <div class="metric"><div class="label">Green raw</div><div id="green" class="value">—</div></div>
+        <div class="metric"><div class="label">Blue raw</div><div id="blue" class="value">—</div></div>
+        <div class="metric"><div class="label">Clear raw</div><div id="clear" class="value">—</div></div>
+      </div>
+      <p id="cropAdvice" class="muted">Crop guidance will appear after a soil test.</p>
+      <div class="row"><button id="captureBtn">Capture soil sample</button><span id="captureMessage" class="status"></span></div>
+    </section>
+
+    <section class="panel">
+      <h2>Control panel</h2>
+      <div class="row">
+        <label for="modeSelect">Operating mode</label>
+        <select id="modeSelect" class="field" style="width:auto;min-width:150px;margin:0">
+          <option value="AUTO">AUTO</option><option value="MANUAL">MANUAL</option>
+        </select>
+        <button id="saveModeBtn">Set mode</button>
+      </div>
+      <p class="small muted">AUTO uses the moisture module's D0 state and its potentiometer threshold. Verify the wet/dry polarity in firmware before using a pump.</p>
+      <div class="row" style="margin-top:12px">
+        <button id="pumpOnBtn">Manual pump ON</button>
+        <button id="pumpOffBtn" class="secondary">Manual pump OFF</button>
+        <button id="auxOnBtn">Aux relay ON</button>
+        <button id="auxOffBtn" class="secondary">Aux relay OFF</button>
+      </div>
+      <p class="small muted">Pump commands take effect in MANUAL mode. The auxiliary relay is controlled independently.</p>
+      <p id="controlMessage" class="status"></p>
+    </section>
+
+    <section class="panel">
+      <h2>Soil-test history</h2>
+      <p class="small muted">Records are stored under your authenticated Firebase user. Crop advice is a provisional colour-based hint, not a soil lab result.</p>
+      <div class="tablewrap">
+        <table><thead><tr><th>Sample</th><th>Soil class</th><th>RGB / Clear</th><th>Temp °C</th><th>Moisture D0</th><th>Advice</th></tr></thead>
+        <tbody id="historyBody"><tr><td colspan="6">No samples yet.</td></tr></tbody></table>
+      </div>
+    </section>
+    <div class="notice">Colour classification depends on illumination, distance, and calibration. For crop selection, also test soil pH, nutrients, texture, drainage, and local growing conditions.</div>
+  </section>
+</main>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getDatabase, ref, onValue, get, set, update, query, limitToLast } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAR2yPSFENC9kM9X6qyQqJMtkgx36Mm9hI",
+  authDomain: "smart-agriculture-d853e.firebaseapp.com",
+  databaseURL: "https://smart-agriculture-d853e-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "smart-agriculture-d853e",
+  storageBucket: "smart-agriculture-d853e.firebasestorage.app",
+  messagingSenderId: "516016871448",
+  appId: "1:516016871448:web:c363418827e0c1d88b0b6d"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getDatabase(app);
+
+const $ = (id) => document.getElementById(id);
+let currentUid = null;
+let stopSensorListener = null;
+let stopHistoryListener = null;
+let stopControlListener = null;
+
+function userPath(child = "") {
+  if (!currentUid) throw new Error("Not signed in");
+  return `/users/${currentUid}${child ? "/" + child : ""}`;
+}
+function showMessage(id, text, isError = false) {
+  $(id).textContent = text;
+  $(id).style.color = isError ? "#a63b31" : "";
+}
+function formatTemp(v) {
+  return typeof v === "number" && Number.isFinite(v) ? `${v.toFixed(2)} °C` : "Not available";
+}
+function setBadge(id, text, on) {
+  const el = $(id); el.textContent = text;
+  el.className = "pill" + (on ? "" : " off");
+}
+async function writeControl(key, value) {
+  if (!currentUid) return;
+  await set(ref(db, userPath(`control/${key}`)), value);
+}
+function renderHistory(data) {
+  const body = $("historyBody");
+  body.replaceChildren();
+  if (!data) {
+    body.innerHTML = '<tr><td colspan="6">No samples yet.</td></tr>';
+    return;
+  }
+  const entries = Object.entries(data).slice(-50).reverse();
+  for (const [key, s] of entries) {
+    const tr = document.createElement("tr");
+    const vals = [
+      s.sampleNumber ?? key,
+      s.soilType ?? "—",
+      `R ${s.red ?? "—"} / G ${s.green ?? "—"} / B ${s.blue ?? "—"} / C ${s.clear ?? "—"}`,
+      typeof s.soilTempC === "number" ? s.soilTempC.toFixed(2) : "Unavailable",
+      s.moistureD0 ?? "—",
+      s.cropAdvice ?? "—"
+    ];
+    vals.forEach(v => { const td = document.createElement("td"); td.textContent = String(v); tr.appendChild(td); });
+    body.appendChild(tr);
+  }
+}
+function startListeners(uid) {
+  if (stopSensorListener) stopSensorListener();
+  if (stopHistoryListener) stopHistoryListener();
+  if (stopControlListener) stopControlListener();
+
+  stopSensorListener = onValue(ref(db, `/users/${uid}/sensorData`), snap => {
+    const s = snap.val() || {};
+    $("temperature").textContent = typeof s.soilTempC === "number" ? `${s.soilTempC.toFixed(2)} °C` : "Unavailable";
+    $("moisture").textContent = s.moistureState ? `${s.moistureState} (D0 ${s.moistureD0 ?? "—"})` : (s.moistureD0 ?? "—");
+    $("soilType").textContent = s.latestSoilType || "Not tested";
+    $("red").textContent = s.red ?? "—";
+    $("green").textContent = s.green ?? "—";
+    $("blue").textContent = s.blue ?? "—";
+    $("clear").textContent = s.clear ?? "—";
+    $("cropAdvice").textContent = s.cropAdvice || "Crop guidance will appear after a soil test.";
+    $("auxStatus").textContent = s.auxStatus || "OFF";
+    setBadge("modeBadge", s.mode || "AUTO", (s.mode || "AUTO") === "AUTO");
+    setBadge("pumpBadge", `PUMP ${s.pumpStatus || "OFF"}`, (s.pumpStatus || "OFF") === "ON");
+    $("deviceStatus").textContent = s.deviceOnline ? "Device reporting sensor data" : "Waiting for device";
+    if (s.updatedAtMs) $("deviceStatus").textContent += ` · Last device uptime marker: ${s.updatedAtMs} ms`;
+    if (s.mode) $("modeSelect").value = s.mode;
+  }, err => showMessage("controlMessage", "Sensor read error: " + err.message, true));
+
+  stopHistoryListener = onValue(query(ref(db, `/users/${uid}/soilHistory`), limitToLast(50)), snap => renderHistory(snap.val()));
+
+  stopControlListener = onValue(ref(db, `/users/${uid}/control`), snap => {
+    const c = snap.val() || {};
+    if (c.mode) $("modeSelect").value = c.mode;
+  });
+}
+
+$("loginForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  showMessage("authMessage", "Signing in…");
+  try {
+    await signInWithEmailAndPassword(auth, $("email").value.trim(), $("password").value);
+    $("password").value = "";
+    showMessage("authMessage", "");
+  } catch (err) {
+    showMessage("authMessage", err.message, true);
+  }
+});
+$("signOutBtn").addEventListener("click", () => signOut(auth));
+onAuthStateChanged(auth, user => {
+  currentUid = user?.uid || null;
+  $("authPanel").classList.toggle("hidden", !!user);
+  $("dashboard").classList.toggle("hidden", !user);
+  $("accountBar").classList.toggle("hidden", !user);
+  $("userEmail").textContent = user?.email || "";
+  if (user) startListeners(user.uid);
+  else {
+    if (stopSensorListener) stopSensorListener();
+    if (stopHistoryListener) stopHistoryListener();
+    if (stopControlListener) stopControlListener();
+  }
+});
+
+$("saveModeBtn").addEventListener("click", async () => {
+  try { await writeControl("mode", $("modeSelect").value); showMessage("controlMessage", "Mode command saved."); }
+  catch (e) { showMessage("controlMessage", e.message, true); }
+});
+$("pumpOnBtn").addEventListener("click", async () => {
+  try {
+    await writeControl("manualPump", true);
+    await writeControl("mode", "MANUAL");
+    $("modeSelect").value = "MANUAL";
+    showMessage("controlMessage", "Manual pump ON requested.");
+  } catch (e) { showMessage("controlMessage", e.message, true); }
+});
+$("pumpOffBtn").addEventListener("click", async () => {
+  try {
+    await writeControl("manualPump", false);
+    await writeControl("mode", "MANUAL");
+    $("modeSelect").value = "MANUAL";
+    showMessage("controlMessage", "Manual pump OFF requested.");
+  } catch (e) { showMessage("controlMessage", e.message, true); }
+});
+$("auxOnBtn").addEventListener("click", async () => {
+  try { await writeControl("auxOn", true); showMessage("controlMessage", "Auxiliary relay ON requested."); }
+  catch (e) { showMessage("controlMessage", e.message, true); }
+});
+$("auxOffBtn").addEventListener("click", async () => {
+  try { await writeControl("auxOn", false); showMessage("controlMessage", "Auxiliary relay OFF requested."); }
+  catch (e) { showMessage("controlMessage", e.message, true); }
+});
+$("captureBtn").addEventListener("click", async () => {
+  try {
+    const p = ref(db, userPath("control/captureRequest"));
+    const snap = await get(p);
+    const next = (Number(snap.val()) || 0) + 1;
+    await set(p, next);
+    showMessage("captureMessage", "Capture request sent to ESP32.");
+  } catch (e) { showMessage("captureMessage", e.message, true); }
+});
+</script>
+</body>
+</html>
